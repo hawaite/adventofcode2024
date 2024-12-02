@@ -47,6 +47,9 @@ def main():
         print("writing %s" % os.path.join(day_root, "input.txt"))
         fp.write(res.text)
 
+    # create example input file. Must be manually populated
+    open(os.path.join(day_root, "example.txt"), 'a').close()
+
     # only create template solution files if one doesnt already exist
     part_one_path = os.path.join(day_root, "part1.py")
     if not os.path.exists(part_one_path):

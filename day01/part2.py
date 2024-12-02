@@ -1,5 +1,3 @@
-import os
-
 def solve(lines:list[str]):
     locations_list_left = []
     right_side_counts = {}
@@ -16,16 +14,3 @@ def solve(lines:list[str]):
          for x in locations_list_left]
 
     print(sum(scores))
-
-def main():
-    cwd = os.path.dirname(__file__)
-
-    with(open(f"{cwd}/input.txt", 'r') as fp):
-        all_lines = fp.readlines()
-
-    all_lines_stripped = [line.strip() for line in all_lines]
-
-    solve(all_lines_stripped)
-
-if __name__ == "__main__":
-    main()

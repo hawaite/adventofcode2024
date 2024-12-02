@@ -2,3 +2,4 @@ input.txt
 example.txt
 test.txt
 set_env.sh
+__pycache__/
