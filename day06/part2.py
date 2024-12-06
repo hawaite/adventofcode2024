@@ -26,6 +26,8 @@ def get_all_points_before_escape(start_point, start_dir, obstacles, width, heigh
     guard_position = start_point
     guard_direction = start_dir
 
+    seen_positions.add(guard_position)
+
     while True:
         # test if obstacle in wanted direction
         position_to_test = (guard_position[0] + guard_direction.value[0], guard_position[1] + guard_direction.value[1])
@@ -58,25 +60,13 @@ def solve(lines:list[str]):
     # reduce search space by only testing points which a +/-1 space from points on the original escape path
     points_to_check = set()
     original_escape_points = get_all_points_before_escape(starting_guard_position, Direction.UP, obstacle_positions, width, height)
-    print(original_escape_points)
-    for point in original_escape_points:
-        col = point[0]
-        row = point[1]
-        # add current point and 4 directions to the potential location list
-        points_to_check.add(point)
-        points_to_check.add((col-1,row))
-        points_to_check.add((col+1,row))
-        points_to_check.add((col,row-1))
-        points_to_check.add((col,row+1))
-    
+    points_to_check.update(original_escape_points)
     # remove guard starting position
     points_to_check.remove(starting_guard_position)
 
     number_to_check = len(points_to_check)
     current = 1
     for new_obstacle in points_to_check:
-        # new_obstacle_col = new_obstacle[0]
-        # new_obstacle_row = new_obstacle[1]
         print("Testing point %d of %d"%(current,number_to_check))
         # reset everything between new obstacle tests
         new_obstacle_positions = obstacle_positions.copy() # take a copy of the original obstacle list and add a new one
@@ -99,7 +89,6 @@ def solve(lines:list[str]):
                 break # next point will be out of bounds
             else: # next point will be inbounds
                 if (position_to_test[0],position_to_test[1]) in new_obstacle_positions: # check if pointion to test is an obstacle
-                    # print("changing direction from " + guard_direction.name + " to " + rotate_direction(guard_direction).name)
                     guard_direction = rotate_direction(guard_direction)
                 else: # could be . or ^
                     if position_to_test in saved_guard_positions_with_direction[guard_direction.name]:
