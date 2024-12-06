@@ -20,6 +20,25 @@ def rotate_direction(dir:Direction):
 def pos_out_of_bounds(pos, width, height):
     return pos[0] < 0 or pos[1] < 0 or pos[0] >= width or pos[1] >= height
 
+def get_all_points_before_escape(start_point, start_dir, obstacles, width, height):
+    seen_positions = set()
+    # run the checker
+    guard_position = start_point
+    guard_direction = start_dir
+
+    while True:
+        # test if obstacle in wanted direction
+        position_to_test = (guard_position[0] + guard_direction.value[0], guard_position[1] + guard_direction.value[1])
+        if(pos_out_of_bounds(position_to_test,width,height)):
+            break # next point will be out of bounds
+        else: # next point will be inbounds
+            if (position_to_test[0],position_to_test[1]) in obstacles: # check if pointion to test is an obstacle
+                guard_direction = rotate_direction(guard_direction)
+            else: # could be . or ^
+                guard_position = position_to_test
+                seen_positions.add(guard_position)
+    return seen_positions
+
 def solve(lines:list[str]):
     obstacle_positions = []
     starting_guard_position = (0,0)
@@ -36,45 +55,61 @@ def solve(lines:list[str]):
                 starting_guard_position = (col, row)
 
     new_obstacles_causing_cycles = []
-    for new_obstacle_row in range(0, height):
-        for new_obstacle_col in range(0, width):
-            print((new_obstacle_col, new_obstacle_row))
+    # reduce search space by only testing points which a +/-1 space from points on the original escape path
+    points_to_check = set()
+    original_escape_points = get_all_points_before_escape(starting_guard_position, Direction.UP, obstacle_positions, width, height)
+    print(original_escape_points)
+    for point in original_escape_points:
+        col = point[0]
+        row = point[1]
+        # add current point and 4 directions to the potential location list
+        points_to_check.add(point)
+        points_to_check.add((col-1,row))
+        points_to_check.add((col+1,row))
+        points_to_check.add((col,row-1))
+        points_to_check.add((col,row+1))
+    
+    # remove guard starting position
+    points_to_check.remove(starting_guard_position)
 
-            # test if this is an existing obstacle or the starting position here
-            if (new_obstacle_col, new_obstacle_row) in obstacle_positions or (new_obstacle_col, new_obstacle_row) == starting_guard_position:
-                continue
-            
-            # reset everything between new obstacle tests
-            new_obstacle_positions = obstacle_positions.copy() # take a copy of the original obstacle list and add a new one
-            new_obstacle_positions.append((new_obstacle_col, new_obstacle_row))
-            guard_position = (starting_guard_position[0],starting_guard_position[1])
-            guard_direction = Direction.UP
+    number_to_check = len(points_to_check)
+    current = 1
+    for new_obstacle in points_to_check:
+        # new_obstacle_col = new_obstacle[0]
+        # new_obstacle_row = new_obstacle[1]
+        print("Testing point %d of %d"%(current,number_to_check))
+        # reset everything between new obstacle tests
+        new_obstacle_positions = obstacle_positions.copy() # take a copy of the original obstacle list and add a new one
+        new_obstacle_positions.append(new_obstacle)
+        guard_position = (starting_guard_position[0],starting_guard_position[1])
+        guard_direction = Direction.UP
 
-            saved_guard_positions = []
-            saved_guard_positions_with_direction = {}
-            saved_guard_positions_with_direction[Direction.UP.name] = [] 
-            saved_guard_positions_with_direction[Direction.DOWN.name] = [] 
-            saved_guard_positions_with_direction[Direction.LEFT.name] = [] 
-            saved_guard_positions_with_direction[Direction.RIGHT.name] = [] 
+        saved_guard_positions = []
+        saved_guard_positions_with_direction = {}
+        saved_guard_positions_with_direction[Direction.UP.name] = [] 
+        saved_guard_positions_with_direction[Direction.DOWN.name] = [] 
+        saved_guard_positions_with_direction[Direction.LEFT.name] = [] 
+        saved_guard_positions_with_direction[Direction.RIGHT.name] = [] 
 
-            # run the checker
-            while True:
-                # test if obstacle in wanted direction
-                position_to_test = (guard_position[0] + guard_direction.value[0], guard_position[1] + guard_direction.value[1])
-                if(pos_out_of_bounds(position_to_test,width,height)):
-                    break # next point will be out of bounds
-                else: # next point will be inbounds
-                    if (position_to_test[0],position_to_test[1]) in new_obstacle_positions: # check if pointion to test is an obstacle
-                        # print("changing direction from " + guard_direction.name + " to " + rotate_direction(guard_direction).name)
-                        guard_direction = rotate_direction(guard_direction)
-                    else: # could be . or ^
-                        if position_to_test in saved_guard_positions_with_direction[guard_direction.name]:
-                            #this point has been seen before, in this direction, meaning a cycle
-                            new_obstacles_causing_cycles.append((new_obstacle_col, new_obstacle_row))
-                            break
-                        else:
-                            guard_position = position_to_test
-                            saved_guard_positions.append(guard_position)
-                            saved_guard_positions_with_direction[guard_direction.name].append(guard_position)
+        # run the checker
+        while True:
+            # test if obstacle in wanted direction
+            position_to_test = (guard_position[0] + guard_direction.value[0], guard_position[1] + guard_direction.value[1])
+            if(pos_out_of_bounds(position_to_test,width,height)):
+                break # next point will be out of bounds
+            else: # next point will be inbounds
+                if (position_to_test[0],position_to_test[1]) in new_obstacle_positions: # check if pointion to test is an obstacle
+                    # print("changing direction from " + guard_direction.name + " to " + rotate_direction(guard_direction).name)
+                    guard_direction = rotate_direction(guard_direction)
+                else: # could be . or ^
+                    if position_to_test in saved_guard_positions_with_direction[guard_direction.name]:
+                        #this point has been seen before, in this direction, meaning a cycle
+                        new_obstacles_causing_cycles.append(new_obstacle)
+                        break
+                    else:
+                        guard_position = position_to_test
+                        saved_guard_positions.append(guard_position)
+                        saved_guard_positions_with_direction[guard_direction.name].append(guard_position)
+        current+=1
 
     print(len(new_obstacles_causing_cycles))
