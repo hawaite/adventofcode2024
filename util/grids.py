@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
+from typing import Callable
 
 @dataclass(frozen=True)
 class Point:
@@ -62,4 +63,22 @@ class Grid:
         self.grid[location.row][location.col] = value
 
     def position_in_bounds(self, location:Point):
-        return ( location.col >= 0 and location.row >= 0 and location.col < self.width and location.row < self.height )
+        return GridUtil.position_in_bounds_static(location, self.width, self.height)
+    
+class GridUtil:
+    @staticmethod
+    def position_in_bounds(location:Point, width, height):
+        return ( location.col >= 0 and location.row >= 0 and location.col < width and location.row < height )
+    
+    @staticmethod
+    def get_positions_matching_from_lines(lines, matcher_func:Callable[[str], bool]):
+        width = len(lines[0])
+        height = len(lines)
+        points = []
+
+        for row in range(0,height):
+            for col in range(0, width):
+                if matcher_func(lines[row][col]):
+                    points.append(Point(col,row))
+
+        return points
