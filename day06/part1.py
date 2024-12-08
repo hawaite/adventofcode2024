@@ -3,7 +3,7 @@ from util.grids import Direction, DirectionalPoint, Grid, Point
 def get_all_points_before_escape(grid:Grid, guard_start:DirectionalPoint):
     seen_positions = set()
     # run the checker
-    guard = guard_start
+    guard = DirectionalPoint(guard_start.point, guard_start.direction)
     seen_positions.add(guard.point) # add first location
 
     while True:

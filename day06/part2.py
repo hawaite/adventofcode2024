@@ -1,104 +1,81 @@
-from enum import Enum
-
-# reminder: positions are (col, row)
-class Direction(Enum):
-    UP = (0,-1)
-    DOWN = (0,1)
-    LEFT = (-1,0)
-    RIGHT = (1,0)
-
-def rotate_direction(dir:Direction):
-    if dir == Direction.UP:
-        return Direction.RIGHT
-    if dir == Direction.RIGHT:
-        return Direction.DOWN
-    if dir == Direction.DOWN:
-        return Direction.LEFT
-    if dir == Direction.LEFT:
-        return Direction.UP
+from util.grids import Direction, DirectionalPoint, Grid, Point
 
 def pos_out_of_bounds(pos, width, height):
     return pos[0] < 0 or pos[1] < 0 or pos[0] >= width or pos[1] >= height
 
-def get_all_points_before_escape(start_point, start_dir, obstacles, width, height):
+def get_all_points_before_escape(grid:Grid, guard_start:DirectionalPoint):
     seen_positions = set()
     # run the checker
-    guard_position = start_point
-    guard_direction = start_dir
-
-    seen_positions.add(guard_position)
+    guard = DirectionalPoint(guard_start.point, guard_start.direction)
+    seen_positions.add(guard.point) # add first location
 
     while True:
         # test if obstacle in wanted direction
-        position_to_test = (guard_position[0] + guard_direction.value[0], guard_position[1] + guard_direction.value[1])
-        if(pos_out_of_bounds(position_to_test,width,height)):
+        position_to_test = Point(guard.point.col + guard.direction.value.col, guard.point.row + guard.direction.value.row)
+        if not grid.position_in_bounds(position_to_test):
             break # next point will be out of bounds
         else: # next point will be inbounds
-            if (position_to_test[0],position_to_test[1]) in obstacles: # check if pointion to test is an obstacle
-                guard_direction = rotate_direction(guard_direction)
-            else: # could be . or ^
-                guard_position = position_to_test
-                seen_positions.add(guard_position)
+            if grid.get_value(position_to_test) == "#": # perform rotate
+                guard.direction = guard.direction.rotate(90)
+            else: # perform valid move
+                guard.point = position_to_test
+                seen_positions.add(guard.point)
+
     return seen_positions
 
 def solve(lines:list[str]):
-    obstacle_positions = []
-    starting_guard_position = (0,0)
-    
-    width = len(lines[0])
-    height = len(lines)
+    grid = Grid(lines)
 
-    # get starting position and obstacle positions
-    for row in range(0, height):
-        for col in range(0, width):
-            if lines[row][col] == "#":
-                obstacle_positions.append((col,row))
-            elif lines[row][col] == "^":
-                starting_guard_position = (col, row)
+    for row_ix, row_val in enumerate(lines):
+        if "^" in row_val:
+            col_ix = row_val.index("^")
+            guard = DirectionalPoint(Point(col_ix, row_ix), Direction.NORTH)
+            grid.set_value(guard.point, ".")
 
     new_obstacles_causing_cycles = []
     # reduce search space by only testing points which a +/-1 space from points on the original escape path
     points_to_check = set()
-    original_escape_points = get_all_points_before_escape(starting_guard_position, Direction.UP, obstacle_positions, width, height)
+    original_escape_points = get_all_points_before_escape(grid, guard)
     points_to_check.update(original_escape_points)
     # remove guard starting position
-    points_to_check.remove(starting_guard_position)
+    points_to_check.remove(guard.point)
 
     number_to_check = len(points_to_check)
     current = 1
     for new_obstacle in points_to_check:
         print("Testing point %d of %d"%(current,number_to_check))
-        # reset everything between new obstacle tests
-        new_obstacle_positions = obstacle_positions.copy() # take a copy of the original obstacle list and add a new one
-        new_obstacle_positions.append(new_obstacle)
-        guard_position = (starting_guard_position[0],starting_guard_position[1])
-        guard_direction = Direction.UP
+        hypothetical_guard = DirectionalPoint(guard.point, guard.direction)
 
-        saved_guard_positions = []
-        saved_guard_positions_with_direction = {}
-        saved_guard_positions_with_direction[Direction.UP.name] = [] 
-        saved_guard_positions_with_direction[Direction.DOWN.name] = [] 
-        saved_guard_positions_with_direction[Direction.LEFT.name] = [] 
-        saved_guard_positions_with_direction[Direction.RIGHT.name] = [] 
+        saved_guard_positions_with_direction = {
+            Direction.NORTH.name : [],
+            Direction.SOUTH.name : [],
+            Direction.WEST.name : [],
+            Direction.EAST.name : []
+        }
+
+        grid.set_value(new_obstacle, "#") # set new obstacle
 
         # run the checker
         while True:
             # test if obstacle in wanted direction
-            position_to_test = (guard_position[0] + guard_direction.value[0], guard_position[1] + guard_direction.value[1])
-            if(pos_out_of_bounds(position_to_test,width,height)):
+            position_to_test = Point(hypothetical_guard.point.col + hypothetical_guard.direction.value.col, hypothetical_guard.point.row + hypothetical_guard.direction.value.row)
+            if not grid.position_in_bounds(position_to_test):
                 break # next point will be out of bounds
             else: # next point will be inbounds
-                if (position_to_test[0],position_to_test[1]) in new_obstacle_positions: # check if pointion to test is an obstacle
-                    guard_direction = rotate_direction(guard_direction)
-                else: # could be . or ^
-                    if position_to_test in saved_guard_positions_with_direction[guard_direction.name]:
+                if grid.get_value(position_to_test) == "#": # check if pointion to test is an obstacle
+                    hypothetical_guard.direction = hypothetical_guard.direction.rotate(90)
+                else: # not an obstacle
+                    # cycle detection
+                    if position_to_test in saved_guard_positions_with_direction[hypothetical_guard.direction.name]:
                         #this point has been seen before, in this direction, meaning a cycle
                         new_obstacles_causing_cycles.append(new_obstacle)
                         break
                     else:
-                        guard_position = position_to_test
-                        saved_guard_positions.append(guard_position)
-                        saved_guard_positions_with_direction[guard_direction.name].append(guard_position)
+                        hypothetical_guard.point = position_to_test
+                        saved_guard_positions_with_direction[hypothetical_guard.direction.name].append(hypothetical_guard.point)
+        
+        grid.set_value(new_obstacle, ".") # reset object back to floor piece
         current+=1
+
 
     print(len(new_obstacles_causing_cycles))
