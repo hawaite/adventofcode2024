@@ -15,6 +15,7 @@ class Direction(Enum):
     SOUTH = Point(0,1)
     SOUTHWEST = Point(-1, 1)
     WEST = Point(-1, 0)
+    NORTHWEST = Point(-1, -1)
 
     def get_rotate_ninty_cw(self):
         if self.name == "NORTH":
@@ -63,7 +64,27 @@ class Grid:
         self.grid[location.row][location.col] = value
 
     def position_in_bounds(self, location:Point):
-        return GridUtil.position_in_bounds_static(location, self.width, self.height)
+        return GridUtil.position_in_bounds(location, self.width, self.height)
+    
+    def render_positions(self, point_list, placeholder):
+        parts = []
+        for i in range(0, self.height):
+            for j in range(0, self.width):
+                point = Point(j,i)
+                if point in point_list:
+                    parts.append(self.get_value(point))
+                else:
+                    parts.append(placeholder)
+            parts.append("\n")
+        return "".join(parts)
+
+    def __repr__(self):
+        parts = []
+        for row in self.grid:
+            for val in row:
+                parts.append(val)
+            parts.append("\n")
+        return "".join(parts)
     
 class GridUtil:
     @staticmethod
