@@ -13,7 +13,7 @@ def get_all_points_before_escape(grid:Grid, guard_start:DirectionalPoint):
             break # next point will be out of bounds
         else: # next point will be inbounds
             if grid.get_value(position_to_test) == "#": # perform rotate
-                guard.direction = Direction.get_rotate_ninty_cw(guard.direction)
+                guard.direction = guard.direction.rotate(90)
             else: # perform valid move
                 guard.point = position_to_test
                 seen_positions.add(guard.point)

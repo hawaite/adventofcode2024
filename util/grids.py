@@ -17,25 +17,18 @@ class Direction(Enum):
     WEST = Point(-1, 0)
     NORTHWEST = Point(-1, -1)
 
-    def get_rotate_ninty_cw(self):
-        if self.name == "NORTH":
-            return Direction.EAST
-        if self.name == "EAST":
-            return Direction.SOUTH
-        if self.name == "SOUTH":
-            return Direction.WEST
-        if self.name == "WEST":
-            return Direction.NORTH
-        
-    def get_rotate_ninty_ccw(self):
-        if self.name == "NORTH":
-            return Direction.WEST
-        if self.name == "WEST":
-            return Direction.SOUTH
-        if self.name == "SOUTH":
-            return Direction.EAST
-        if self.name == "EAST":
-            return Direction.NORTH
+    # returns a new enum instance value rotated closwise by degrees.
+    # only values divisible by 45 are valid
+    # can be negative for counter clockwise
+    def rotate(self, degrees:int):
+        ordering = list(Direction)
+        (places, remainder) = divmod(degrees, 45)
+        if remainder != 0:
+            raise ValueError("degrees must be divisible by 45")
+        ix = ordering.index(self)
+        ix += places
+        ix = ix % len(ordering)
+        return ordering[ix]
 
 @dataclass
 class DirectionalPoint:
