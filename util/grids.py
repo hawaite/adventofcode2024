@@ -30,6 +30,10 @@ class Direction(Enum):
         ix = ix % len(ordering)
         return ordering[ix]
 
+cardinal_directions = [Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST ]
+ordinal_directions = [Direction.NORTHEAST, Direction.SOUTHEAST, Direction.SOUTHWEST, Direction.NORTHWEST ]
+eight_point_directions = cardinal_directions + ordinal_directions
+
 @dataclass
 class DirectionalPoint:
     point: Point
