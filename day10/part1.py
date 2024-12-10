@@ -1,23 +1,20 @@
+from collections import deque
 from util.grids import Grid, Point, cardinal_directions
 
 def solve(lines:list[str]):
     map_grid = Grid(lines)
-    trailheads = [Point(col,row) for row in range(0,map_grid.height) for col in range(0, map_grid.width) if map_grid.get_value(Point(col, row)) == "0" ]
+    trailheads = map_grid.get_matching_positions("0")
 
     overall_total = 0
     for trailhead in trailheads:
         current_point = Point(trailhead.col, trailhead.row)
         found_finishes = set()
-        points_to_test = [Point(current_point.col, current_point.row)]
+        points_to_test = deque([Point(current_point.col, current_point.row)])
         seen_points = set()
         
-        while True:
-            if len(points_to_test) == 0:
-                break # ran out of things to test
-
+        while len(points_to_test) > 0:
             # pull first point and add it to the "seen" list
-            point_to_test = points_to_test[0]
-            points_to_test = points_to_test[1:]
+            point_to_test = points_to_test.pop()
             seen_points.add(Point(point_to_test.col, point_to_test.row))
 
             if map_grid.get_value(point_to_test) == "9":
@@ -25,9 +22,9 @@ def solve(lines:list[str]):
                 continue
 
             points_from_here = [
-                Point(point_to_test.col + dir.value.col, point_to_test.row + dir.value.row) 
-                for dir in cardinal_directions 
-                if map_grid.position_in_bounds(Point(point_to_test.col + dir.value.col, point_to_test.row + dir.value.row))
+                    Point(point_to_test.col + dir.value.col, point_to_test.row + dir.value.row) 
+                    for dir in cardinal_directions 
+                    if map_grid.position_in_bounds(Point(point_to_test.col + dir.value.col, point_to_test.row + dir.value.row))
                 ]
             
             for point in points_from_here:

@@ -74,6 +74,10 @@ class Grid:
                     parts.append(placeholder)
             parts.append("\n")
         return "".join(parts)
+    
+    def get_matching_positions(self, value):
+        # iterates entire grid so should be avoided inside loops where possible
+        return [Point(col,row) for row in range(0,self.height) for col in range(0, self.width) if self.get_value(Point(col, row)) == value ]
 
     def __repr__(self):
         parts = []
