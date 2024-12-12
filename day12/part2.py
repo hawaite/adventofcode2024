@@ -1,64 +1,21 @@
 from util.grids import Direction, Grid, Point, cardinal_directions
 
+# external corners like the 4 on the outside of a square
 # a single point can be 4 external corners at once
+# a point counts as an external corner if we take 2 consecutive cardinal directions
+# and both of them dont match the current point value. Out of bounds counts as not matching
 def external_corners_on_point(point:Point, grid:Grid) -> int:
     total = 0
     current_point_value = grid.get_value(point)
-
-    up_point = Point(point.col + Direction.NORTH.value.col, point.row + Direction.NORTH.value.row)
-    down_point = Point(point.col + Direction.SOUTH.value.col, point.row + Direction.SOUTH.value.row)
-    left_point = Point(point.col + Direction.WEST.value.col, point.row + Direction.WEST.value.row)
-    right_point = Point(point.col + Direction.EAST.value.col, point.row + Direction.EAST.value.row)
-
-    up_inbounds = grid.position_in_bounds(up_point)
-    down_inbounds = grid.position_in_bounds(down_point)
-    left_inbounds = grid.position_in_bounds(left_point)
-    right_inbounds = grid.position_in_bounds(right_point)
-
-    up_oob_or_different_value = False
-    if not up_inbounds:
-        up_oob_or_different_value = True
-    else: #inbounds
-        if grid.get_value(up_point) != current_point_value:
-            up_oob_or_different_value = True
-
-    down_oob_or_different_value = False
-    if not down_inbounds:
-        down_oob_or_different_value = True
-    else: #inbounds
-        if grid.get_value(down_point) != current_point_value:
-            down_oob_or_different_value = True
-
-    left_oob_or_different_value = False
-    if not left_inbounds:
-        left_oob_or_different_value = True
-    else: #inbounds
-        if grid.get_value(left_point) != current_point_value:
-            left_oob_or_different_value = True
-
-    right_oob_or_different_value = False
-    if not right_inbounds:
-        right_oob_or_different_value = True
-    else: #inbounds
-        if grid.get_value(right_point) != current_point_value:
-            right_oob_or_different_value = True
-
-    # UP & LEFT
-    if up_oob_or_different_value and left_oob_or_different_value:
-        total += 1
-
-    # UP & RIGHT
-    if up_oob_or_different_value and right_oob_or_different_value:
-        total += 1
-
-    # DOWN & LEFT
-    if down_oob_or_different_value and left_oob_or_different_value:
-        total += 1
-
-    # DOWN & RIGHT
-    if down_oob_or_different_value and right_oob_or_different_value:
-        total += 1
-
+    directions_to_test = [Direction.NORTHEAST, Direction.SOUTHEAST, Direction.SOUTHWEST, Direction.NORTHWEST]
+    for direction_to_test in directions_to_test:
+        # get a list of the two points we're testing
+        test_points = [Point(point.col + direction_to_test.rotate(angle).value.col, point.row + direction_to_test.rotate(angle).value.row) for angle in [-45, 45]]
+        # get only points which are either out of bounds, or do NOT match the current point value
+        oob_or_not_matching_points = [tp for tp in test_points if not grid.position_in_bounds(tp) or (grid.position_in_bounds(tp) and grid.get_value(tp) != current_point_value)]
+        # if we still have two points then this is an external corner
+        if len(oob_or_not_matching_points) == 2:
+            total += 1
     return total
 
 def internal_corners_on_point(point:Point, grid:Grid) -> bool:
