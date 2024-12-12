@@ -1,6 +1,6 @@
 from util.grids import Direction, Grid, Point, cardinal_directions
 
-# external corners like the 4 on the outside of a square
+# external corners like the 4 on the outside of a square. a 90 degree angle wrt the shape
 # a single point can be 4 external corners at once
 # a point counts as an external corner if we take 2 consecutive cardinal directions
 # and both of them dont match the current point value. Out of bounds counts as not matching
@@ -18,45 +18,24 @@ def external_corners_on_point(point:Point, grid:Grid) -> int:
             total += 1
     return total
 
-def internal_corners_on_point(point:Point, grid:Grid) -> bool:
+# internal corners are like that one 270 degree angle on the inside of an "L" shape
+# a single point can be multiple external corners, as seen in the "E" example input
+# we test for this by taking three consecutive directional points and if the outer two match the the current point value
+# and the middle one does not, we have an internal corner. It is not possible for an internal corner to be out of bounds.
+def internal_corners_on_point(point:Point, grid:Grid) -> int:
     # up & left must be value, while upleft is not
     current_point_value = grid.get_value(point)
     total = 0
+    directions_to_test = [Direction.NORTHEAST, Direction.SOUTHEAST, Direction.SOUTHWEST, Direction.NORTHWEST]
+    for direction_to_test in directions_to_test:
+        test_points = [Point(point.col + direction_to_test.rotate(angle).value.col, point.row + direction_to_test.rotate(angle).value.row) for angle in [-45, 0, 45]]
+        if not all([grid.position_in_bounds(p) for p in test_points]):
+            continue # this direction is not all inbounds, but others may be
 
-    up_point = Point(point.col + Direction.NORTH.value.col, point.row + Direction.NORTH.value.row)
-    down_point = Point(point.col + Direction.SOUTH.value.col, point.row + Direction.SOUTH.value.row)
-    left_point = Point(point.col + Direction.WEST.value.col, point.row + Direction.WEST.value.row)
-    right_point = Point(point.col + Direction.EAST.value.col, point.row + Direction.EAST.value.row)
+        # if point 0 and 2 match but point 1 does not, thats an internal corner
+        if grid.get_value(test_points[0]) == current_point_value and grid.get_value(test_points[2]) == current_point_value and grid.get_value(test_points[1]) != current_point_value:
+            total += 1
 
-    up_left_point = Point(point.col + Direction.NORTHWEST.value.col, point.row + Direction.NORTHWEST.value.row)
-    down_left_point = Point(point.col + Direction.SOUTHWEST.value.col, point.row + Direction.SOUTHWEST.value.row)
-    up_right_point = Point(point.col + Direction.NORTHEAST.value.col, point.row + Direction.NORTHEAST.value.row)
-    down_right_point = Point(point.col + Direction.SOUTHEAST.value.col, point.row + Direction.SOUTHEAST.value.row)
-
-    # up-left. All points must be in-bounds to be an internal corner
-    if grid.position_in_bounds(up_point) and grid.position_in_bounds(up_left_point) and grid.position_in_bounds(left_point):
-        if grid.get_value(up_point) == current_point_value and grid.get_value(left_point) == current_point_value and grid.get_value(up_left_point) != current_point_value:
-            #is up-left internal corner
-            total += 1
-        
-    # up-right. All points must be in-bounds to be an internal corner
-    if grid.position_in_bounds(up_point) and grid.position_in_bounds(up_right_point) and grid.position_in_bounds(right_point):
-        if grid.get_value(up_point) == current_point_value and grid.get_value(right_point) == current_point_value and grid.get_value(up_right_point) != current_point_value:
-            #is up-right internal corner
-            total += 1
-        
-    # down-left. All points must be in-bounds to be an internal corner
-    if grid.position_in_bounds(down_point) and grid.position_in_bounds(down_left_point) and grid.position_in_bounds(left_point):
-        if grid.get_value(down_point) == current_point_value and grid.get_value(left_point) == current_point_value and grid.get_value(down_left_point) != current_point_value:
-            #is down-left internal corner
-            total += 1
-        
-    # down-right. All points must be in-bounds to be an internal corner
-    if grid.position_in_bounds(down_point) and grid.position_in_bounds(down_right_point) and grid.position_in_bounds(right_point):
-        if grid.get_value(down_point) == current_point_value and grid.get_value(right_point) == current_point_value and grid.get_value(down_right_point) != current_point_value:
-            #is down-right internal corner
-            total += 1
-        
     return total
 
 def solve(lines:list[str]):
