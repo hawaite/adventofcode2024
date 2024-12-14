@@ -3,3 +3,4 @@ example.txt
 test.txt
 set_env.sh
 __pycache__/
+temp/
