@@ -33,8 +33,8 @@ def solve(lines:list[str]):
     # only need the program for comparison as we have already translated it in to the function above
     program = [int(x) for x in lines[4].split(": ")[1].split(",")]
 
-    # This was only solved through intuition and trial and error.
-    # was working out a way to try reverse modulo, which involves multiplying by 8 and then adding a mystery value between 0 and 7.
-    # continually multiplying by 8 and adding some value, while checking that we are generating the correct output digits
-    # resulted in the correct answer.
+    # Accidentally stumbled on to the pattern.
+    # plan was to start with a = 0 and run the function backwards.
+    # I was working out a way to try reverse the "a = int(a\8)", which involves multiplying by 8 and then adding a mystery value between 0 and 7 for the remainder
+    # that was truncated by casting to int while checking that we are generating the correct output digits. Continually applying this resulted in the correct answer.
     calculate_a(0, program)
