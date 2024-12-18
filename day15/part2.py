@@ -47,10 +47,10 @@ def can_push_box_in_direction(box:Box, boxes:list[Box], walls:set[Point], move:D
     # this set filters out boxes directly above/below the current box.
     # prevents it being evaluated twice
     found_adjacent_boxes = set()
-    # found_adjacent_boxes = [(box for box in boxes if box.point_is_in_this_box(point_to_test)) for point_to_test in points_to_test]
     for point_to_test in points_to_test:
-        boxes_this_point_is_in = set([ box for box in boxes if box.point_is_in_this_box(point_to_test)])
-        found_adjacent_boxes = found_adjacent_boxes.union(boxes_this_point_is_in)
+        boxes_this_point_is_in = [ box for box in boxes if box.point_is_in_this_box(point_to_test)]
+        if len(boxes_this_point_is_in) == 1:
+            found_adjacent_boxes.add(boxes_this_point_is_in[0])
 
     # we now have a list of adjacent boxes to check
     if len(found_adjacent_boxes) > 0:
@@ -58,45 +58,29 @@ def can_push_box_in_direction(box:Box, boxes:list[Box], walls:set[Point], move:D
         return all([can_push_box_in_direction(adjacent_box, boxes, walls, move) for adjacent_box in found_adjacent_boxes])
     else:
         return True # wasnt walls, wasnt boxes
-
-def get_all_adjacent_boxes(box:Box, boxes:list[Box], move: Direction) -> list[Box]:
-    # east/west moves are simple lines because boxes are 1 height but 2 width
-    if move in [ Direction.WEST, Direction.EAST] :
-        box_side_to_use = box.left if move == Direction.WEST else box.right
-        point_to_test = Point(box_side_to_use.col + move.value.col, box_side_to_use.row + move.value.row)
+    
+def get_all_adjacent_boxes(box:Box, boxes:list[Box], move: Direction) -> set[Box]:
+    points_to_test = box.get_points_in_direction(move)
+    found_adjacent_boxes = set()
+    for point_to_test in points_to_test:
         boxes_this_point_is_in = [ box for box in boxes if box.point_is_in_this_box(point_to_test)]
         if len(boxes_this_point_is_in) == 1:
-            return boxes_this_point_is_in + get_all_adjacent_boxes(boxes_this_point_is_in[0], boxes, move)
-        else:
-            return []
-    # north/south moves need to check both points in the required direction for walls, spaces, and other boxes
-    elif move in [Direction.NORTH, Direction.SOUTH]:
-        point_to_test_left = Point(box.left.col + move.value.col, box.left.row + move.value.row)
-        point_to_test_right = Point(box.right.col + move.value.col, box.right.row + move.value.row)
+            found_adjacent_boxes.add(boxes_this_point_is_in[0])
 
-        # get all points that in any of the 3 possible adjacencies above.
-        adjacent_boxes = [b for b in boxes if b.right == point_to_test_left or b.left == point_to_test_right or (b.left == point_to_test_left and b.right == point_to_test_right)]
-        # there were adjacent boxes in this direction
-        if len(adjacent_boxes) == 1:
-            return [adjacent_boxes[0]] + get_all_adjacent_boxes(adjacent_boxes[0], boxes, move)
-        elif len(adjacent_boxes) == 2:
-            return [adjacent_boxes[0], adjacent_boxes[1]] + get_all_adjacent_boxes(adjacent_boxes[0], boxes, move) + get_all_adjacent_boxes(adjacent_boxes[1], boxes, move)
-        else:
-            # there were no walls or boxes in this direction, meaning 2 valid spaces.
-            return []
+    # union all the sets together
+    return set([box]).union(*[get_all_adjacent_boxes(b, boxes, move) for b in found_adjacent_boxes])
 
 def push_box_in_direction(box:Box, boxes:list[Box], move:Direction) -> list[Box]:
     # for all boxes adjacent to this one in a direction, increase the coord in that direction
-    # TODO
-    updated_boxes = boxes.copy()
-    # TODO: fix this hack
-    boxes_to_move = list(set([box] + get_all_adjacent_boxes(box, updated_boxes, move)))
-    # print(f"pushing boxes: {boxes_to_move} in direction {move.name}")
+    updated_boxes = set(boxes)
+    boxes_to_move = get_all_adjacent_boxes(box, boxes, move)
+    # remove the boxes we will be moving from the existing set of boxes
+    updated_boxes = updated_boxes.difference(boxes_to_move)
+    
     for box_to_move in boxes_to_move:
-        # delete old box
-        updated_boxes.remove(box_to_move)
-        # add new box wirh updated position
-        updated_boxes.append(Box(Point(box_to_move.left.col + move.value.col, box_to_move.left.row + move.value.row), Point(box_to_move.right.col + move.value.col, box_to_move.right.row + move.value.row)))
+        # add back in the new box points
+        updated_boxes.add(Box(Point(box_to_move.left.col + move.value.col, box_to_move.left.row + move.value.row), Point(box_to_move.right.col + move.value.col, box_to_move.right.row + move.value.row)))
+
     return updated_boxes
 
 def perform_single_move_if_possible(boxes: list[Box], walls: set[Point], robot_point:Point, move:Direction) -> Tuple[List[Box], Point]:
@@ -114,7 +98,7 @@ def perform_single_move_if_possible(boxes: list[Box], walls: set[Point], robot_p
     
     # proposed position MUST be a box at this point
     # find which box
-    adjacent_box = [ box for box in boxes if box.left == target_robot_position_point or box.right == target_robot_position_point ][0]
+    adjacent_box = [ box for box in boxes if box.point_is_in_this_box(target_robot_position_point) ][0]
 
     if can_push_box_in_direction(adjacent_box, boxes, walls, move):
         updated_boxes = push_box_in_direction(adjacent_box, boxes, move)
