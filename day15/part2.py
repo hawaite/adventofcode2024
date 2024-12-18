@@ -9,6 +9,16 @@ class Box:
 
     def point_is_in_this_box(self, point:Point):
         return point in [self.left, self.right]
+    
+    def get_points_in_direction(self, direction:Direction) -> list[Point]:
+        if direction in [ Direction.NORTH, Direction.SOUTH]:
+            return [Point(self.left.col, self.left.row + direction.value.row), Point(self.right.col, self.right.row + direction.value.row)] 
+        else:
+            if direction == Direction.WEST:
+                return [Point(self.left.col + direction.value.col, self.left.row + direction.value.row)]
+            else:
+                return [Point(self.right.col + direction.value.col, self.right.row + direction.value.row)]
+
 
 def generate_expanded_map(lines):
     updated_map_lines = []
@@ -28,37 +38,26 @@ def generate_expanded_map(lines):
 
 # starting at box, iterate over adjacent boxes until either we hit a wall and return false, 
 # or run out of adjacent boxes and return true because we ran out of adjacent boxes while not hitting a single wall
-def can_push_box_in_direction(box:Box, boxes:list[Box], walls:list[Point], move:Direction) -> bool:
-    # east/west moves are simple lines because boxes are 1 height but 2 width
-    if move in [ Direction.WEST, Direction.EAST ]:
-        # need to check 1 off the left if checking WEST or 1 off the right if checking RIGHT
-        box_side_to_check = box.left if move == Direction.WEST else box.right
-        point_to_test = Point(box_side_to_check.col + move.value.col, box_side_to_check.row + move.value.row)
-        boxes_this_point_is_in = [ box for box in boxes if box.point_is_in_this_box(point_to_test)]
-        if len(boxes_this_point_is_in) == 1: # found adjacent box
-            return can_push_box_in_direction(boxes_this_point_is_in[0], boxes, walls, move)
-        elif point_to_test in walls:
-            return False # immediately false because you cant push in to a wall
-        else:
-            return True # must be a space
-    # north/south moves need to check both points in the required direction for walls, spaces, and other boxes
-    elif move in [ Direction.NORTH, Direction.SOUTH ]:
-        point_to_test_left = Point(box.left.col, box.left.row + move.value.row)
-        point_to_test_right = Point(box.right.col, box.right.row + move.value.row)
+def can_push_box_in_direction(box:Box, boxes:list[Box], walls:set[Point], move:Direction) -> bool:
+    points_to_test = box.get_points_in_direction(move)
 
-        # immediate failure if points in this direction are walls
-        if point_to_test_left in walls or point_to_test_right in walls:
-            return False
+    if len(set(points_to_test).intersection(walls)) > 0:
+        return False # some of these points to inspect were walls
+    
+    # this set filters out boxes directly above/below the current box.
+    # prevents it being evaluated twice
+    found_adjacent_boxes = set()
+    # found_adjacent_boxes = [(box for box in boxes if box.point_is_in_this_box(point_to_test)) for point_to_test in points_to_test]
+    for point_to_test in points_to_test:
+        boxes_this_point_is_in = set([ box for box in boxes if box.point_is_in_this_box(point_to_test)])
+        found_adjacent_boxes = found_adjacent_boxes.union(boxes_this_point_is_in)
 
-        # get all points that in any of the 3 possible adjacencies above/below. left, middle or right.
-        adjacent_boxes = [b for b in boxes if b.right == point_to_test_left or b.left == point_to_test_right or (b.left == point_to_test_left and b.right == point_to_test_right)]
-        # there were adjacent boxes in this direction
-        if len(adjacent_boxes) > 0:
-            # return true if all the adjacent boxes we just found are also pushable
-            return all([can_push_box_in_direction(adjacent_box, boxes, walls, move) for adjacent_box in adjacent_boxes])
-        else:
-            # points were not walls or adjacent boxes, meaning spaces.
-            return True
+    # we now have a list of adjacent boxes to check
+    if len(found_adjacent_boxes) > 0:
+        # Logical AND everything together
+        return all([can_push_box_in_direction(adjacent_box, boxes, walls, move) for adjacent_box in found_adjacent_boxes])
+    else:
+        return True # wasnt walls, wasnt boxes
 
 def get_all_adjacent_boxes(box:Box, boxes:list[Box], move: Direction) -> list[Box]:
     # east/west moves are simple lines because boxes are 1 height but 2 width
@@ -100,7 +99,7 @@ def push_box_in_direction(box:Box, boxes:list[Box], move:Direction) -> list[Box]
         updated_boxes.append(Box(Point(box_to_move.left.col + move.value.col, box_to_move.left.row + move.value.row), Point(box_to_move.right.col + move.value.col, box_to_move.right.row + move.value.row)))
     return updated_boxes
 
-def perform_single_move_if_possible(boxes: list[Box], walls: list[Point], robot_point:Point, move:Direction) -> Tuple[List[Box], Point]:
+def perform_single_move_if_possible(boxes: list[Box], walls: set[Point], robot_point:Point, move:Direction) -> Tuple[List[Box], Point]:
     target_robot_position_point = Point(robot_point.col + move.value.col, robot_point.row + move.value.row)
 
     # proposed space is a wall. Return boxes and robot location without change
@@ -141,7 +140,7 @@ def solve(lines:list[str]):
     grid = Grid(updated_board_def)
 
     robot_point = grid.get_matching_positions("@")[0]
-    wall_points = grid.get_matching_positions("#")
+    wall_points = set(grid.get_matching_positions("#"))
     box_left_points = grid.get_matching_positions("[")
 
     boxes = [Box(point, Point(point.col+1, point.row)) for point in box_left_points]
