@@ -14,6 +14,6 @@ def solve(lines:list[str]):
     # If there's a shortcut then the distance for that path is distance_so_far + distance_from_finish_of_target_node + manhattan distance to that node
 
     next_nodes, dist = parse_path(start,end,paths)
-    paths_saving_100_or_more_ticks = get_number_of_cheated_paths_saving_100_ticks(start, end, dist, next_nodes, paths, 2)
+    paths_saving_100_or_more_ticks = get_number_of_cheated_paths_saving_100_ticks(start, end, dist, next_nodes, paths, 20)
 
     print(f"paths_saving_100_or_more_ticks: {paths_saving_100_or_more_ticks}")
