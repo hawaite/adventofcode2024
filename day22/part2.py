@@ -1,12 +1,7 @@
-from collections import deque
-from itertools import product
-big_dumb_list_of_combinations = list(product([-9,-8,-7,-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6,7,8,9],[-9,-8,-7,-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6,7,8,9], [-9,-8,-7,-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6,7,8,9], [-9,-8,-7,-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6,7,8,9]))
-
-def get_banana_sales(starting_number, max_times, trigger_combination:list[int]):
+def generate_digit_list(starting_number, times):
+    last_digit_numbers = [ starting_number % 10 ]
     secret_number = int(starting_number)
-    changes = deque([], maxlen=4)
-    final_digit = secret_number % 10
-    for _ in range(0,max_times):
+    for _ in range(0,times-1):
         # step 1
         temp = secret_number * 64
         secret_number = secret_number ^ temp # mix is XOR
@@ -23,54 +18,49 @@ def get_banana_sales(starting_number, max_times, trigger_combination:list[int]):
         secret_number = secret_number % 16777216
 
         # get the final digit
-        new_final_digit = secret_number % 10
-        change = new_final_digit - final_digit
-        changes.append(change)
-        # print(changes)
-        if list(changes) == trigger_combination:
-            # print("matched passed trigger")
-            return new_final_digit
-        final_digit = new_final_digit
-        
-    return 0
+        last_digit_numbers.append(secret_number % 10)
+    return last_digit_numbers
 
-def prune_studid_combination_list(combination_list):
-    # there are combinations that are obviously not possible
-    # simple prune anything that goes outside of +/-9 when starting from 0
-    new_combination_list = []
-    for combo in combination_list:
-        combo_list = list(combo)
-        
-        test_num = 0
-        valid = True
-        for num in combo_list:
-            test_num += num
-            if test_num < -9 or test_num > 9:
-                valid = False
-                break
-        if valid:
-            new_combination_list.append(combo)
+def generate_difference_list(digit_list):
+    diff_list = []
+    for _, diff_window in window(digit_list, 2):
+        diff_list.append(diff_window[0] - diff_window[1])
 
-    return new_combination_list
+    return diff_list
 
+# returns a dictionary of all the trigger values to the number of bananas returned 
+def get_banana_sales_value(starting_number, times):
+    digits = generate_digit_list(starting_number, times)
+    diff_list = generate_difference_list(digits)
+
+    result_dict = {}
+    for i, diff_window in window(diff_list, 4):
+        # turn the list in to a tuple because tuples are hashable, while lists are not
+        if tuple(diff_window) not in result_dict.keys():
+            result_dict[tuple(diff_window)] = digits[i+4]
+
+    return result_dict
+
+def window(lst:list, size:int):
+    for i in range(0, len(lst) - size + 1):
+        yield (i, lst[i:i+size])
 
 def solve(lines:list[str]):
-    best_combination = []
+    pattern_counts = {}
+    for line in lines:
+        seller_patterns = get_banana_sales_value(int(line), 2000)
+        for k,v in seller_patterns.items():
+            if k not in pattern_counts.keys():
+                pattern_counts[k] = 0
+            pattern_counts[k] = pattern_counts[k] + v
+
+    best_combination = None
     best_combination_count = 0
 
-    # print(len(big_dumb_list_of_combinations))
-    # print(len(prune_studid_combination_list(big_dumb_list_of_combinations)))
-
-    for trigger_combination in prune_studid_combination_list(big_dumb_list_of_combinations):
-        total = 0
-        for line in lines:
-            received_bananas = get_banana_sales(line, 2000, list(trigger_combination))
-            total += received_bananas
-
-        if total > best_combination_count:
-            print(f"new best!: {trigger_combination} - {total}")
-            best_combination_count = total
-            best_combination = trigger_combination
-
+    for k,v in pattern_counts.items():
+        if v > best_combination_count:
+            best_combination = k
+            best_combination_count = v
+    
     print(f"best count {best_combination_count}")
     print(f"combination: {best_combination}")
