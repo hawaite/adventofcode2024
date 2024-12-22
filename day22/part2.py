@@ -1,3 +1,6 @@
+from collections import defaultdict
+
+
 def generate_digit_list(starting_number, times):
     last_digit_numbers = [ starting_number % 10 ]
     secret_number = int(starting_number)
@@ -36,6 +39,7 @@ def get_banana_sales_value(starting_number, times):
     result_dict = {}
     for i, diff_window in window(diff_list, 4):
         # turn the list in to a tuple because tuples are hashable, while lists are not
+        # we only care about recording the first instance of each pattern
         if tuple(diff_window) not in result_dict.keys():
             result_dict[tuple(diff_window)] = digits[i+4]
 
@@ -46,13 +50,11 @@ def window(lst:list, size:int):
         yield (i, lst[i:i+size])
 
 def solve(lines:list[str]):
-    pattern_counts = {}
+    pattern_counts = defaultdict(int)
     for line in lines:
         seller_patterns = get_banana_sales_value(int(line), 2000)
         for k,v in seller_patterns.items():
-            if k not in pattern_counts.keys():
-                pattern_counts[k] = 0
-            pattern_counts[k] = pattern_counts[k] + v
+            pattern_counts[k] += v
 
     best_combination = None
     best_combination_count = 0

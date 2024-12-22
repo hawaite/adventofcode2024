@@ -1,12 +1,12 @@
+from collections import defaultdict
+
 def solve(lines:list[str]):
     locations_list_left = []
-    right_side_counts = {}
+    right_side_counts = defaultdict(int)
 
     for line in lines:
         parts = line.split("   ")
         locations_list_left.append(int(parts[0]))
-        if int(parts[1]) not in right_side_counts.keys():
-            right_side_counts[int(parts[1])] = 0
 
         right_side_counts[int(parts[1])] = right_side_counts[int(parts[1])] + 1
 
