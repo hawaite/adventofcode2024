@@ -1,59 +1,50 @@
-import heapq
-import itertools
+import math
 from util.grids import Direction, Grid, Point, cardinal_directions
-
-# if the move is in the direction we are pointing, cost is 1.
-# otherwise the cost is 1001 (1 rotate + 1 move)
-def cost(source, dest, direction):
-    if dest == Point(source.col + direction.value.col, source.row + direction.value.row):
-        return 1
-    else:
-        return 1001
+from networkx import DiGraph
+import networkx as nx
 
 def solve(lines:list[str]):
     g = Grid(lines)
     start = g.get_matching_positions("S")[0]
     end = g.get_matching_positions("E")[0]
     maze_locations = g.get_matching_positions(".") + [start, end]
-    counter = itertools.count()
 
-    # start at maze start location
-    distances = {node: float('infinity') for node in maze_locations}
-    prev = {node: None for node in maze_locations}
-    distances[start] = 0
-    
-    pq = [(0, next(counter), start, Direction.EAST)]
+    # edges are not symetrical, therefore DiGraph
+    maze_graph = DiGraph()
+    for point in maze_locations:
+        # a point is defined by it's x,y as well as the direction the reindeer is facing while standing on it
+        # could be smarter and only add nodes that it would be possible to enter this node from
+        # but unconnected nodes shouldnt affect performance too badly.
+        maze_graph.add_node((point, Direction.NORTH))
+        maze_graph.add_node((point, Direction.SOUTH))
+        maze_graph.add_node((point, Direction.EAST))
+        maze_graph.add_node((point, Direction.WEST))
 
-    while len(pq) > 0:
-        current_distance, _, current_point, current_direction = heapq.heappop(pq)
+    for point in maze_locations:
+        # for each floor point, generate 4 surrounding points.
+        # iterate over each orientation we could be facing on this square.
+        # add edge to straightahead of cost 1 if that node is in graph
+        # add edge to all other nodes of cost 1001 if that node is in the graph.
+        
+        for facing_dir in cardinal_directions:
+            points_from_here = [(dir, Point(point.col + dir.value.col, point.row + dir.value.row)) for dir in cardinal_directions]
+            for dir, point_from_here in points_from_here:
+                if (point_from_here, dir) in maze_graph.nodes:
+                    # 1 position ahead exists. add cost 1 edge
+                    # cost = 1 if facing_dir == dir else 1001
+                    maze_graph.add_edge((point, facing_dir), (point_from_here, dir), weight=(1 if facing_dir == dir else 1001))
 
-        if current_distance > distances[current_point]:
-            continue
+    shortest_ending_len = math.inf
+    for dir in cardinal_directions:
+        # example can be finished either facing north or east.
+        # my actual finish can only be reached facing east.
+        # iterating over all options to make it generic
+        try:
+            shortest_path_to_end = nx.shortest_path_length(maze_graph, (start, Direction.EAST), (end, dir), weight="weight")
+            print(f"dir: {dir}, len: {shortest_path_to_end}")
+            if shortest_path_to_end < shortest_ending_len:
+                shortest_ending_len = shortest_path_to_end
+        except:
+            pass
 
-        if current_point == end:
-            break
-
-        all_neighbours = [(dir,Point(current_point.col + dir.value.col, current_point.row + dir.value.row)) for dir in cardinal_directions]
-        # exclude wall points
-        valid_neighbours = [p for p in all_neighbours if p[1] in maze_locations]
-
-        for neighbour_dir, neighbour_point in valid_neighbours:
-            proposed_distance = current_distance + cost(current_point, neighbour_point, current_direction)
-
-            if proposed_distance < distances[neighbour_point]:
-                prev[neighbour_point] = current_point
-                distances[neighbour_point] = proposed_distance
-                new_facing_direction = neighbour_dir
-
-                heapq.heappush(pq, (proposed_distance, next(counter), neighbour_point, new_facing_direction))
-
-    print(f"shortest distance to end: {distances[end]}")
-    # # debug graph rendering
-    # current = end
-    # shortest_path = [end]
-    # while True:
-    #     current = prev[current]
-    #     shortest_path.append(current)
-    #     if current == start:
-    #         break
-    # print(g.render_positions(shortest_path,'#'))
+    print(f"shortest path: {shortest_ending_len}")
