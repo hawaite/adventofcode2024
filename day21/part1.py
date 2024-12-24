@@ -1,3 +1,4 @@
+from functools import cache
 import math
 import networkx as nx
 from networkx import DiGraph
@@ -25,22 +26,6 @@ def generate_numeric_keypad_graph():
 
     return number_keypad
 
-def generate_directional_keypad_graph():
-    directional_keypad = DiGraph()
-    nx.add_path(directional_keypad, ["^", "A"], direction = ">")
-    nx.add_path(directional_keypad, ["<", "V", ">"], direction = ">")
-
-    nx.add_path(directional_keypad, reversed(["^", "A"]), direction = "<")
-    nx.add_path(directional_keypad, reversed(["<", "V", ">"]), direction = "<")
-
-    nx.add_path(directional_keypad, ["^", "V"], direction = "V")
-    nx.add_path(directional_keypad, ["A", ">"], direction = "V")
-
-    nx.add_path(directional_keypad, reversed(["^", "V"]), direction = "^")
-    nx.add_path(directional_keypad, reversed(["A", ">"]), direction = "^")
-
-    return directional_keypad
-
 def path_to_direction_list(keypad, path):
     path_directions = []
     for source, dest in pairwise(path):
@@ -51,12 +36,13 @@ def path_to_direction_list(keypad, path):
 def flatten(l):
     return [item for sublist in l for item in sublist]
 
-def get_all_paths(buttons, keypad):
+def get_all_numeric_paths(code):
+    numeric_keypad = generate_numeric_keypad_graph()
     current = "A"
     parts = []
-    for button in buttons:
-        paths = list(nx.all_shortest_paths(keypad, current, button))
-        direction_lists = [path_to_direction_list(keypad, x) for x in paths]
+    for button in code:
+        paths = list(nx.all_shortest_paths(numeric_keypad, current, button))
+        direction_lists = [path_to_direction_list(numeric_keypad, x) for x in paths]
         direction_lists_plus_a = [dl + ["A"] for dl in direction_lists]
         parts.append(direction_lists_plus_a)
         current = button
@@ -64,40 +50,87 @@ def get_all_paths(buttons, keypad):
     all_paths = []
     # EXTREMELY EXPENSIVE OPERATION
     # basically all of the execution time is flattening lists
+    # print(parts)
     for p in list(product(*parts)):
         all_paths.append(flatten(p))
     return all_paths
 
+# pre-computed shortest paths between directional buttons
+# prefere options that have runs of the same direction, and heavily prefere options that do not end on a "<"
+# as those cause the level above to be on "<" and have to travel back to "A"
+shortest_directional = {
+    ('^', 'A'): ['>'], 
+    ('A', '^'): ['<'], 
+    ('^', '<'): ['V', '<'], 
+    ('<', '^'): ['>', '^'], 
+    ('^', 'V'): ['V'], 
+    ('V', '^'): ['^'], 
+    ('^', '>'): ['>', 'V'],#[['>', 'V'], ['V', '>']], 
+    ('>', '^'): ['<', '^'],#[['<', '^'], ['^', '<']], 
+    ('A', '<'): ['V', '<', '<'],#[['<', 'V', '<'], ['V', '<', '<']], 
+    ('<', 'A'): ['>', '>', '^'],#[['>', '>', '^'], ['>', '^', '>']], 
+    ('A', 'V'): ['<', 'V'], #[['<', 'V'], ['V', '<']], 
+    ('V', 'A'): ['>', '^'],#[['>', '^'], ['^', '>']], 
+    ('A', '>'): ['V'], 
+    ('>', 'A'): ['^'], 
+    ('<', 'V'): ['>'], 
+    ('V', '<'): ['<'], 
+    ('<', '>'): ['>', '>'], 
+    ('>', '<'): ['<', '<'], 
+    ('V', '>'): ['>'], 
+    ('>', 'V'): ['<'],
+    ('^', '^'): [],
+    ('<', '<'): [],
+    ('>', '>'): [],
+    ('V', 'V'): [],
+    ('A', 'A'): [],
+    }
+
 def solve(lines:list[str]):
-    directional_keypad = generate_directional_keypad_graph()
-    numeric_keypad = generate_numeric_keypad_graph()
     total = 0
 
     for line in lines:
-        minimum_level_3_len = math.inf
-        minimum_level_3 = None
+        # somewhat expensive building of all possible paths between A, the three digits, and back to A
+        lvl1_paths = get_all_numeric_paths(line)
 
-        lvl1_paths = get_all_paths(line, numeric_keypad)
-        print(f"There were {len(lvl1_paths)} level 1 paths")
-
+        # first directional keypad
         lvl2_paths = []
+        shortest_lvl2_path_len = 10000000000000000
+        # there may be multiple level 1 paths and we need to get all of the ones that are the shortest length.
+        # simply picking one of the shortest is not sufficient.
         for lvl1_path in lvl1_paths:
-            lvl2_paths.extend(get_all_paths(lvl1_path, directional_keypad))
-        print(f"There were {len(lvl2_paths)} level 2 paths")
-
+            current = "A"
+            new_path = []
+            for button in lvl1_path:
+                new_path.extend(shortest_directional[(current, button)])
+                new_path.append("A")
+                current = button
+            # we ran in to a new shortest path
+            if len(new_path) < shortest_lvl2_path_len:
+                shortest_lvl2_path_len = len(new_path)
+                #clear the old stored paths as now too long
+                lvl2_paths = [new_path]
+            elif len(new_path) == shortest_lvl2_path_len:
+                # another path of the same len.
+                lvl2_paths.append(new_path)
+        
         lvl3_paths = []
+        shortest_lvl3_path_len = 10000000000000000
         for lvl2_path in lvl2_paths:
-            lvl3_paths.extend(get_all_paths(lvl2_path, directional_keypad))
-        print(f"There were {len(lvl3_paths)} level 3 paths")
+            current = "A"
+            new_path = []
+            for button in lvl2_path:
+                new_path.extend(shortest_directional[(current, button)])
+                new_path.append("A")
+                current = button
+            # we ran in to a new shortest path
+            if len(new_path) < shortest_lvl3_path_len:
+                shortest_lvl3_path_len = len(new_path)
+                #clear the old stored paths as now too long
+                lvl3_paths = [new_path]
+            elif len(new_path) == shortest_lvl3_path_len:
+                # another path of the same len.
+                lvl3_paths.append(new_path)
 
-        for lvl3_path in lvl3_paths:
-            if len(lvl3_path) < minimum_level_3_len:
-                minimum_level_3_len = len(lvl3_path)
-                minimum_level_3 = lvl3_path
-
-        print(line)
-        print(minimum_level_3_len)
-        print(minimum_level_3)
-        total += minimum_level_3_len * int(line[:-1])
-        print("---------------")
+        total += shortest_lvl3_path_len * int(line[:-1])
     print(total)
