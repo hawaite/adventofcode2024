@@ -1,5 +1,3 @@
-from functools import cache
-import math
 import networkx as nx
 from networkx import DiGraph
 from itertools import pairwise, product
@@ -86,51 +84,31 @@ shortest_directional = {
     ('A', 'A'): [],
     }
 
+def expand(code):
+    current = "A"
+    new_path = []
+    for button in code:
+        new_path.extend(shortest_directional[(current, button)])
+        new_path.append("A")
+        current = button
+    return new_path
+
 def solve(lines:list[str]):
     total = 0
 
     for line in lines:
         # somewhat expensive building of all possible paths between A, the three digits, and back to A
         lvl1_paths = get_all_numeric_paths(line)
-
-        # first directional keypad
-        lvl2_paths = []
-        shortest_lvl2_path_len = 10000000000000000
-        # there may be multiple level 1 paths and we need to get all of the ones that are the shortest length.
-        # simply picking one of the shortest is not sufficient.
-        for lvl1_path in lvl1_paths:
-            current = "A"
-            new_path = []
-            for button in lvl1_path:
-                new_path.extend(shortest_directional[(current, button)])
-                new_path.append("A")
-                current = button
-            # we ran in to a new shortest path
-            if len(new_path) < shortest_lvl2_path_len:
-                shortest_lvl2_path_len = len(new_path)
-                #clear the old stored paths as now too long
-                lvl2_paths = [new_path]
-            elif len(new_path) == shortest_lvl2_path_len:
-                # another path of the same len.
-                lvl2_paths.append(new_path)
         
-        lvl3_paths = []
-        shortest_lvl3_path_len = 10000000000000000
-        for lvl2_path in lvl2_paths:
-            current = "A"
-            new_path = []
-            for button in lvl2_path:
-                new_path.extend(shortest_directional[(current, button)])
-                new_path.append("A")
-                current = button
-            # we ran in to a new shortest path
-            if len(new_path) < shortest_lvl3_path_len:
-                shortest_lvl3_path_len = len(new_path)
-                #clear the old stored paths as now too long
-                lvl3_paths = [new_path]
-            elif len(new_path) == shortest_lvl3_path_len:
-                # another path of the same len.
-                lvl3_paths.append(new_path)
+        additional_levels = 2
+        paths_to_evaluate = lvl1_paths
 
-        total += shortest_lvl3_path_len * int(line[:-1])
+        for _ in range(0,additional_levels):
+            paths = []
+            for path in paths_to_evaluate:
+                paths.append(expand(path))
+            paths_to_evaluate = paths
+
+        top_level_minimum_length = min([len(path) for path in paths_to_evaluate])
+        total += top_level_minimum_length * int(line[:-1])
     print(total)
